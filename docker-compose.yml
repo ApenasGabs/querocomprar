@@ -1,0 +1,42 @@
+name: querocomprar
+
+services:
+  querocomprar:
+    container_name: querocomprar
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: querocomprar:latest
+    restart: unless-stopped
+    ports:
+      - "3005:3001"
+    environment:
+      - PORT=3001
+      - DATA_DIR=/app/data
+      - SCRAPER_CRON=0 8,20 * * *
+      - NODE_ENV=production
+    volumes:
+      - /DATA/AppData/querocomprar:/app/data
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: querocomprar
+  description:
+    en_us: Autonomous local wishlist, continuous price monitoring and anti-inflation market intelligence.
+    pt_br: Sistema autônomo de wishlist com prioridades, monitoramento contínuo de preços e detecção de oscilação do e-commerce.
+  tagline:
+    en_us: Price Tracker & Wishlist
+    pt_br: Wishlist & Inteligência de Preços
+  developer: Gabriel Rodrigues
+  author: Kraken
+  icon: https://cdn-icons-png.flaticon.com/512/3081/3081840.png
+  thumbnail: https://cdn-icons-png.flaticon.com/512/3081/3081840.png
+  title:
+    en_us: Quero Comprar
+    pt_br: Quero Comprar
+  category: Utilities
+  port_map: "3005"
+  scheme: http
+  index: /
