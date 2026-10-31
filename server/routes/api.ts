@@ -67,7 +67,7 @@ apiRouter.get("/products", (req: Request, res: Response) => {
 // GET /api/products/:id - Detalhes completos do produto com histórico de preços
 apiRouter.get("/products/:id", (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const product = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id) as any;
 
     if (!product) {
@@ -142,7 +142,7 @@ apiRouter.post("/products", async (req: Request, res: Response) => {
 // PUT /api/products/:id - Atualiza produto
 apiRouter.put("/products/:id", (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { name, target_price, priority, category, negative_keywords, reference_url, notes } = req.body;
 
     const existing = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id);
@@ -181,7 +181,7 @@ apiRouter.put("/products/:id", (req: Request, res: Response) => {
 // DELETE /api/products/:id - Remove produto
 apiRouter.delete("/products/:id", (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     db.prepare(`DELETE FROM products WHERE id = ?`).run(id);
     res.json({ success: true, message: "Produto removido com sucesso" });
   } catch (err) {
@@ -192,7 +192,7 @@ apiRouter.delete("/products/:id", (req: Request, res: Response) => {
 // POST /api/products/:id/scrape - Dispara checagem manual imediata de um produto
 apiRouter.post("/products/:id/scrape", async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const result = await ScraperService.scrapeProduct(id);
     const updated = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id) as any;
     const metrics = calculateProductMetrics(id, updated.target_price);
