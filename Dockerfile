@@ -1,37 +1,32 @@
-# Estágio 1: Build
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copiar manifestos de dependência
 COPY package*.json ./
-RUN npm ci --include=dev
+RUN npm install --include=dev
 
 COPY . .
+RUN npm run build
 
-# Compilar frontend React e backend TypeScript Hono
-RUN npm run build:client && npm run build:server
-
-# Estágio 2: Runner de Produção
 FROM node:22-alpine AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3333
+ENV PORT=3001
+ENV DATA_DIR=/app/data
 
-# Instalar dependências estritas de produção
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
-# Copiar os artefatos gerados no build
 COPY --from=builder /app/dist ./dist
-
-# Diretório para o SQLite WAL persistente
-RUN mkdir -p /app/data
+COPY --from=builder /app/server ./server
 
 VOLUME ["/app/data"]
 
-EXPOSE 3333
+EXPOSE 3001
 
-CMD ["node", "dist/server/index.js"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- http://localhost:3001/health || exit 1
+
+CMD ["node", "--experimental-strip-types", "server/index.ts"]

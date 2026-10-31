@@ -1,40 +1,42 @@
-version: '3.8'
+name: querocomprar
 
 services:
   querocomprar:
-    image: querocomprar:latest
+    container_name: querocomprar
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: querocomprar
+    image: querocomprar:latest
     restart: unless-stopped
     ports:
-      - "3333:3333"
+      - "3005:3001"
     environment:
+      - PORT=3001
+      - DATA_DIR=/app/data
+      - SCRAPER_CRON=0 8,20 * * *
       - NODE_ENV=production
-      - PORT=3333
-      - DATABASE_URL=/app/data/quero_comprar.db
     volumes:
       - /DATA/AppData/querocomprar:/app/data
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-    x-casaos:
-      architectures:
-        - amd64
-        - arm64
-      main: querocomprar
-      author: ApenasGabs
-      category: Utilities
-      description:
-        en_us: Autonomous price tracking and smart wishlist with anti-outlier filters.
-        pt_br: Sistema autônomo local de monitoramento de preços e wishlist inteligente com proteção contra falsos descontos.
-      developer: ApenasGabs
-      icon: https://raw.githubusercontent.com/ApenasGabs/querocomprar/main/public/icon.svg
-      index: /
-      port_map: "3333"
-      scheme: http
-      title:
-        en_us: Quero Comprar
-        pt_br: Quero Comprar
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: querocomprar
+  description:
+    en_us: Autonomous local wishlist, continuous price monitoring and anti-inflation market intelligence.
+    pt_br: Sistema autônomo de wishlist com prioridades, monitoramento contínuo de preços e detecção de oscilação do e-commerce.
+  tagline:
+    en_us: Price Tracker & Wishlist
+    pt_br: Wishlist & Inteligência de Preços
+  developer: Gabriel Rodrigues
+  author: Kraken
+  icon: https://cdn-icons-png.flaticon.com/512/3081/3081840.png
+  thumbnail: https://cdn-icons-png.flaticon.com/512/3081/3081840.png
+  title:
+    en_us: Quero Comprar
+    pt_br: Quero Comprar
+  category: Utilities
+  port_map: "3005"
+  scheme: http
+  index: /
