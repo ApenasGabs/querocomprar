@@ -12,6 +12,7 @@ import {
   Store,
 } from "lucide-react";
 import { Sparkline } from "./Sparkline.tsx";
+import { Badge, Button, Card } from "./ui/index.ts";
 import type { Product } from "../types/index.ts";
 
 interface ProductCardProps {
@@ -42,52 +43,51 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   // Badges de Prioridade
-  const priorityConfig = {
-    1: { label: "P1 • Alta Prioridade", bg: "bg-rose-500/10 text-rose-400 border-rose-500/20" },
-    2: { label: "P2 • Média Prioridade", bg: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
-    3: { label: "P3 • Desejo Longo Prazo", bg: "bg-slate-700/30 text-slate-400 border-slate-700" },
-  }[product.priority] || { label: `P${product.priority}`, bg: "bg-slate-800 text-slate-300 border-slate-700" };
+  const priorityVariant =
+    product.priority === 1
+      ? "error"
+      : product.priority === 2
+      ? "warning"
+      : "default";
+
+  const priorityLabel =
+    product.priority === 1
+      ? "P1 • Alta Prioridade"
+      : product.priority === 2
+      ? "P2 • Média Prioridade"
+      : "P3 • Desejo Longo Prazo";
 
   // Badges de Status de Compra
-  const statusConfig = {
-    cheap: {
-      label: "Tá Barato!",
-      badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-      desc: "Abaixo da meta",
-    },
-    fair: {
-      label: "Preço Estável",
-      badge: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-      desc: "Próximo à meta",
-    },
-    expensive: {
-      label: "Tá Caro",
-      badge: "bg-rose-500/15 text-rose-400 border-rose-500/30",
-      desc: "Acima da meta",
-    },
-    untracked: {
-      label: "Não Monitorado",
-      badge: "bg-slate-800 text-slate-400 border-slate-700",
-      desc: "Sem dados",
-    },
-  }[metrics.status];
+  const statusVariant =
+    metrics.status === "cheap"
+      ? "success"
+      : metrics.status === "fair"
+      ? "info"
+      : metrics.status === "expensive"
+      ? "error"
+      : "default";
+
+  const statusLabel =
+    metrics.status === "cheap"
+      ? "Tá Barato!"
+      : metrics.status === "fair"
+      ? "Preço Estável"
+      : metrics.status === "expensive"
+      ? "Tá Caro"
+      : "Não Monitorado";
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800/90 hover:border-slate-700 rounded-xl p-5 flex flex-col justify-between transition-all duration-200 shadow-sm hover:shadow-md group">
+    <Card className="hover:border-slate-700 p-5 flex flex-col justify-between transition-all duration-200 shadow-sm hover:shadow-md group">
       {/* Top Header do Card: Prioridade + Status */}
       <div>
         <div className="flex items-center justify-between gap-2 mb-3">
-          <span
-            className={`text-[11px] font-semibold border rounded-md px-2 py-0.5 ${priorityConfig.bg}`}
-          >
-            {priorityConfig.label}
-          </span>
-          <span
-            className={`text-[11px] font-bold border rounded-md px-2.5 py-0.5 flex items-center gap-1 ${statusConfig.badge}`}
-          >
+          <Badge variant={priorityVariant} size="sm">
+            {priorityLabel}
+          </Badge>
+          <Badge variant={statusVariant} size="sm" className="font-bold gap-1">
             {metrics.status === "cheap" && <Sparkles className="w-3 h-3" />}
-            {statusConfig.label}
-          </span>
+            {statusLabel}
+          </Badge>
         </div>
 
         {/* Título & Categoria */}
@@ -199,23 +199,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Footer com Ações */}
       <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
-          <button
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => onViewDetails(product)}
-            className="flex items-center gap-1 text-xs font-medium text-slate-300 hover:text-emerald-400 bg-slate-800/60 hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700/60 transition"
+            className="text-slate-300 hover:text-emerald-400 border border-slate-700/60"
             title="Ver gráfico temporal e histórico completo"
           >
             <BarChart2 className="w-3.5 h-3.5" />
             <span>Histórico</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => onScrape(product.id)}
             disabled={isScraping}
-            className="text-slate-400 hover:text-slate-200 bg-slate-800/40 hover:bg-slate-800 p-1.5 rounded-lg border border-slate-700/40 transition disabled:opacity-50"
+            className="text-slate-400 hover:text-slate-200 border border-slate-700/40 p-1.5"
             title="Verificar preços deste produto agora"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isScraping ? "animate-spin text-emerald-400" : ""}`} />
-          </button>
+          </Button>
         </div>
 
         <div className="flex items-center gap-1">
@@ -224,30 +228,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               href={metrics.current_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs font-medium text-slate-950 bg-emerald-500 hover:bg-emerald-400 px-2.5 py-1.5 rounded-lg shadow-sm transition"
+              className="btn btn-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none font-semibold flex items-center gap-1"
             >
               <span>Ir à Loja</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           )}
 
-          <button
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => onEdit(product)}
-            className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800 transition"
+            className="text-slate-400 hover:text-slate-200 p-1.5"
             title="Editar configurações"
           >
             <Edit className="w-3.5 h-3.5" />
-          </button>
+          </Button>
 
-          <button
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => onDelete(product.id)}
-            className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition"
+            className="text-slate-400 hover:text-rose-400 p-1.5"
             title="Excluir produto"
           >
             <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Card>
   );
 };

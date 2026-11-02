@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Header } from "./components/Header.tsx";
 import { StatsCards } from "./components/StatsCards.tsx";
+import { DashboardAlerts } from "./components/DashboardAlerts.tsx";
 import { ProductCard } from "./components/ProductCard.tsx";
 import { ProductModal } from "./components/ProductModal.tsx";
 import { ProductDetailModal } from "./components/ProductDetailModal.tsx";
+import { Button, Badge } from "./components/ui/index.ts";
 import {
   Filter,
   Plus,
@@ -13,11 +15,12 @@ import {
   Flame,
   Layers,
 } from "lucide-react";
-import type { Product, SummaryMetrics } from "./types/index.ts";
+import type { Product, SummaryMetrics, DashboardAlert } from "./types/index.ts";
 
 export const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [summary, setSummary] = useState<SummaryMetrics | null>(null);
+  const [alerts, setAlerts] = useState<DashboardAlert[]>([]);
   const [search, setSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<"all" | 1 | 2 | 3>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "cheap" | "fair" | "expensive">("all");
@@ -34,13 +37,14 @@ export const App: React.FC = () => {
   const [isScrapingAll, setIsScrapingAll] = useState(false);
   const [scrapingId, setScrapingId] = useState<string | null>(null);
 
-  // Carrega produtos e sumário
+  // Carrega produtos, sumário e alertas da Dashboard
   const loadData = async () => {
     try {
       setLoading(true);
-      const [prodRes, sumRes] = await Promise.all([
+      const [prodRes, sumRes, alertsRes] = await Promise.all([
         fetch("/api/products"),
         fetch("/api/summary"),
+        fetch("/api/alerts"),
       ]);
 
       if (prodRes.ok) {
@@ -50,6 +54,10 @@ export const App: React.FC = () => {
       if (sumRes.ok) {
         const sumData = await sumRes.json();
         setSummary(sumData);
+      }
+      if (alertsRes.ok) {
+        const alertsData = await alertsRes.json();
+        setAlerts(alertsData.alerts || []);
       }
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
@@ -163,7 +171,7 @@ export const App: React.FC = () => {
       return false;
     }
 
-    // Filtro por Status
+    // Filtro por Status ("cheap", "fair", "expensive")
     if (statusFilter !== "all" && p.metrics.status !== statusFilter) {
       return false;
     }
@@ -177,7 +185,7 @@ export const App: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
       {/* Header */}
       <Header
         search={search}
@@ -190,87 +198,123 @@ export const App: React.FC = () => {
         isScrapingAll={isScrapingAll}
       />
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Métricas Topo */}
-        <StatsCards summary={summary} />
+      {/* Main Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Banner de Estatísticas Resumidas */}
+        <div className="mb-8">
+          <StatsCards summary={summary} />
+        </div>
 
-        {/* Barra de Filtros & Prioridades */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-sm">
+        {/* Alertas Exclusivos na Dashboard */}
+        <DashboardAlerts
+          alerts={alerts}
+          onSelectProductById={(id) => {
+            const found = products.find((p) => p.id === id);
+            if (found) {
+              setSelectedProduct(found);
+              setIsDetailOpen(true);
+            }
+          }}
+        />
+
+        {/* Barra de Filtros e Controles */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800/80">
           {/* Tabs de Prioridade */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
-            <span className="text-xs text-slate-500 font-semibold mr-1 flex items-center gap-1">
-              <Layers className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+            <span className="text-xs font-semibold text-slate-500 mr-2 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5" />
               Prioridade:
             </span>
+
             <button
               onClick={() => setPriorityFilter("all")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                 priorityFilter === "all"
-                  ? "bg-slate-800 text-slate-100 border border-slate-700 shadow-sm"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                  ? "bg-slate-800 text-slate-100 border border-slate-700 font-semibold"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Todas
+              Todos ({products.length})
             </button>
+
             <button
               onClick={() => setPriorityFilter(1)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
                 priorityFilter === 1
-                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm font-bold"
-                  : "text-slate-400 hover:text-rose-400 hover:bg-slate-800/50"
+                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/30 font-semibold"
+                  : "text-slate-400 hover:text-rose-400"
               }`}
             >
-              P1 • Alta
+              <span className="w-2 h-2 rounded-full bg-rose-500" />
+              P1 Alta
             </button>
+
             <button
               onClick={() => setPriorityFilter(2)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
                 priorityFilter === 2
-                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm font-bold"
-                  : "text-slate-400 hover:text-amber-400 hover:bg-slate-800/50"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold"
+                  : "text-slate-400 hover:text-amber-400"
               }`}
             >
-              P2 • Média
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              P2 Média
             </button>
+
             <button
               onClick={() => setPriorityFilter(3)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
                 priorityFilter === 3
-                  ? "bg-slate-700/60 text-slate-200 border border-slate-600 shadow-sm font-bold"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                  ? "bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold"
+                  : "text-slate-400 hover:text-blue-400"
               }`}
             >
-              P3 • Longo Prazo
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              P3 Longo Prazo
             </button>
           </div>
 
-          {/* Filtros de Oportunidade e Categoria */}
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {/* Status Pill */}
-            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+          {/* Status & Categorias */}
+          <div className="flex items-center gap-3 self-end md:self-auto">
+            {/* Status Pills */}
+            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
               <button
                 onClick={() => setStatusFilter("all")}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${
-                  statusFilter === "all" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"
+                className={`px-2.5 py-1 rounded-md text-xs transition ${
+                  statusFilter === "all"
+                    ? "bg-slate-800 text-slate-200 font-semibold shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                Todos Status
+                Todos
               </button>
+
               <button
                 onClick={() => setStatusFilter("cheap")}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1 transition ${
+                className={`px-2.5 py-1 rounded-md text-xs transition flex items-center gap-1 ${
                   statusFilter === "cheap"
                     ? "bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30"
                     : "text-slate-400 hover:text-emerald-400"
                 }`}
               >
-                <Flame className="w-3 h-3 text-emerald-400" />
-                Tá Barato!
+                <Sparkles className="w-3 h-3" />
+                Tá Barato
               </button>
+
+              <button
+                onClick={() => setStatusFilter("fair")}
+                className={`px-2.5 py-1 rounded-md text-xs transition ${
+                  statusFilter === "fair"
+                    ? "bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30"
+                    : "text-slate-400 hover:text-blue-400"
+                }`}
+              >
+                Estável
+              </button>
+
               <button
                 onClick={() => setStatusFilter("expensive")}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${
+                className={`px-2.5 py-1 rounded-md text-xs transition ${
                   statusFilter === "expensive"
                     ? "bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30"
                     : "text-slate-400 hover:text-rose-400"
@@ -342,25 +386,29 @@ export const App: React.FC = () => {
             </div>
 
             <div className="pt-2 flex items-center justify-center gap-3">
-              <button
+              <Button
+                variant="primary"
+                size="md"
                 onClick={() => {
                   setProductToEdit(null);
                   setIsModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md transition"
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none font-bold gap-1.5"
               >
                 <Plus className="w-4 h-4" />
                 Cadastrar Desejo
-              </button>
+              </Button>
 
               {products.length === 0 && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="md"
                   onClick={handleSeed}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                  className="border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold gap-1.5"
                 >
                   <Database className="w-4 h-4 text-teal-400" />
                   Carregar Dados de Exemplo
-                </button>
+                </Button>
               )}
             </div>
           </div>

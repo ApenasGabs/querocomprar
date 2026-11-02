@@ -1,5 +1,6 @@
 import React from "react";
-import { ShoppingCart, Search, RefreshCw, Plus, Sparkles } from "lucide-react";
+import { ShoppingCart, Search, RefreshCw, Plus } from "lucide-react";
+import { Button, Badge } from "./ui/index.ts";
 
 interface HeaderProps {
   search: string;
@@ -29,9 +30,9 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-lg font-bold text-slate-100 tracking-tight">
                 Quero Comprar
               </h1>
-              <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full px-2 py-0.5">
+              <Badge variant="primary" size="sm" className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
                 Homelab
-              </span>
+              </Badge>
             </div>
             <p className="text-xs text-slate-400 hidden sm:block">
               Wishlist com prioridade e monitoramento inteligente de preços
@@ -53,25 +54,29 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Actions */}
         <div className="flex items-center gap-2.5">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onScrapeAll}
             disabled={isScrapingAll}
             title="Buscar preços em todas as lojas agora"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition disabled:opacity-50"
+            className="border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isScrapingAll ? "animate-spin text-emerald-400" : ""}`} />
             <span className="hidden sm:inline">
-              {isScrapingAll ? "Verificando Lojas..." : "Verificar Todos"}
+              {isScrapingAll ? "Verificando..." : "Verificar Todos"}
             </span>
-          </button>
+          </Button>
 
-          <button
+          <Button
+            variant="primary"
+            size="sm"
             onClick={onOpenNewModal}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition"
+            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none shadow-md shadow-emerald-500/20 font-semibold gap-1.5"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Novo Desejo</span>
-          </button>
+          </Button>
         </div>
       </div>
     </header>

@@ -21,6 +21,7 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from "recharts";
+import { Button, Badge } from "./ui/index.ts";
 import type { Product, ProductDetail } from "../types/index.ts";
 
 interface ProductDetailModalProps {
@@ -126,15 +127,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => onScrape(product.id).then(() => fetchDetail(product.id))}
               disabled={isScraping}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition disabled:opacity-50"
+              className="border border-slate-700 bg-slate-800 text-slate-200 gap-1.5"
               title="Buscar preços agora"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isScraping ? "animate-spin text-emerald-400" : ""}`} />
               <span className="hidden sm:inline">Verificar Agora</span>
-            </button>
+            </Button>
 
             <button
               onClick={onClose}
