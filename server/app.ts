@@ -1,32 +1,43 @@
-import express from "express";
-import type { Request, Response } from "express";
-import cors from "cors";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { serveStatic } from "@hono/node-server/serve-static";
 import path from "node:path";
 import fs from "node:fs";
 import { apiRouter } from "./routes/api.ts";
 
-const app = express();
+const app = new Hono();
 
-app.use(cors());
-app.use(express.json());
+// CORS Middleware
+app.use("*", cors());
 
-// API Routes
-app.use("/api", apiRouter);
+// Healthcheck routes
+const healthHandler = (c: any) => {
+  return c.json({
+    status: "ok",
+    service: "querocomprar",
+    timestamp: new Date().toISOString(),
+  });
+};
 
-// Healthcheck
-app.get(["/health", "/api/health"], (_req: Request, res: Response) => {
-  res.json({ status: "ok", service: "querocomprar", timestamp: new Date().toISOString() });
-});
+app.get("/health", healthHandler);
+app.get("/api/health", healthHandler);
 
-// Em produção, serve os arquivos estáticos gerados pelo Vite (dist/)
+// Mount API routes under /api
+app.route("/api", apiRouter);
+
+// Serve static frontend files from Vite dist/ if present
 const distPath = path.resolve(process.cwd(), "dist");
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
-  app.use((req: Request, res: Response, next) => {
-    if (req.method !== "GET" || req.path.startsWith("/api") || req.path === "/health") {
-      return next();
+  app.use("/*", serveStatic({ root: "./dist" }));
+
+  // SPA fallback for client-side routing
+  app.get("*", (c) => {
+    const indexPath = path.join(distPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      const html = fs.readFileSync(indexPath, "utf-8");
+      return c.html(html);
     }
-    res.sendFile(path.join(distPath, "index.html"));
+    return c.text("Not Found", 404);
   });
 }
 

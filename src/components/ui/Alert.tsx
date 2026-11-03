@@ -1,0 +1,60 @@
+import type { ReactElement, ReactNode } from "react";
+
+export interface AlertProps {
+  children: ReactNode;
+  type?: "info" | "success" | "warning" | "error";
+  testId?: string;
+  className?: string;
+  icon?: ReactNode;
+  action?: ReactNode;
+}
+
+/**
+ * Componente de alerta adaptado de ApenasGabs/ApenasTemplate
+ */
+export const Alert = ({
+  children,
+  type = "info",
+  testId,
+  className = "",
+  icon,
+  action,
+}: AlertProps): ReactElement => {
+  const alertClasses: Record<string, string> = {
+    info: "alert-info",
+    success: "alert-success",
+    warning: "alert-warning",
+    error: "alert-error",
+  };
+
+  const alertClass = alertClasses[type] || alertClasses.info;
+
+  return (
+    <div
+      className={`alert ${alertClass} ${className}`.trim()}
+      data-testid={testId}
+      role="alert"
+    >
+      {icon ? (
+        icon
+      ) : (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          className="stroke-current shrink-0 w-6 h-6"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      )}
+      <div className="flex-1 text-sm font-medium">{children}</div>
+      {action && <div className="flex-none">{action}</div>}
+    </div>
+  );
+};

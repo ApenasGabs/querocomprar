@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, ShieldAlert, DollarSign, Tag, ListOrdered, Link, FileText } from "lucide-react";
+import { Button } from "./ui/index.ts";
 import type { Product } from "../types/index.ts";
 
 interface ProductModalProps {
@@ -250,21 +251,25 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           </div>
 
           {/* Footer Buttons */}
-          <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
-            <button
+          <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-2">
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+              className="text-slate-400 hover:text-slate-200"
             >
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              variant="primary"
+              size="sm"
               disabled={loading}
-              className="px-5 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition disabled:opacity-50"
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none font-bold"
             >
               {loading ? "Salvando..." : productToEdit ? "Salvar Alterações" : "Cadastrar e Monitorar"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

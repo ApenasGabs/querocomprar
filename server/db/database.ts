@@ -56,4 +56,43 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_price_history_captured_at ON price_history(captured_at);
 `);
 
+// Migração resiliente de schema legado
+try {
+  const columns = db.prepare("PRAGMA table_info(products)").all() as any[];
+  const columnNames = columns.map((c) => c.name);
+  if (columnNames.includes("title") && !columnNames.includes("name")) {
+    db.exec(`ALTER TABLE products RENAME COLUMN title TO name;`);
+  }
+  if (columnNames.includes("reference_urls") && !columnNames.includes("reference_url")) {
+    db.exec(`ALTER TABLE products RENAME COLUMN reference_urls TO reference_url;`);
+  }
+  if (!columnNames.includes("notes")) {
+    db.exec(`ALTER TABLE products ADD COLUMN notes TEXT DEFAULT '';`);
+  }
+
+  // Migração para scrape_logs legado
+  const logCols = db.prepare("PRAGMA table_info(scrape_logs)").all() as any[];
+  const logColNames = logCols.map((c) => c.name);
+  if (!logColNames.includes("message")) {
+    db.exec(`ALTER TABLE scrape_logs ADD COLUMN message TEXT DEFAULT '';`);
+    if (logColNames.includes("error_message")) {
+      db.exec(`UPDATE scrape_logs SET message = error_message WHERE message = '' OR message IS NULL;`);
+    }
+  }
+  if (!logColNames.includes("items_found")) {
+    db.exec(`ALTER TABLE scrape_logs ADD COLUMN items_found INTEGER DEFAULT 0;`);
+    if (logColNames.includes("offers_found")) {
+      db.exec(`UPDATE scrape_logs SET items_found = offers_found;`);
+    }
+  }
+  if (!logColNames.includes("created_at")) {
+    db.exec(`ALTER TABLE scrape_logs ADD COLUMN created_at TEXT DEFAULT '';`);
+    if (logColNames.includes("executed_at")) {
+      db.exec(`UPDATE scrape_logs SET created_at = executed_at;`);
+    }
+  }
+} catch (e) {
+  // Ignora caso a tabela esteja sendo inicializada pela primeira vez
+}
+
 console.log(`[Database] SQLite inicializado com sucesso em modo WAL: ${dbPath}`);

@@ -77,3 +77,19 @@ export interface SummaryMetrics {
   untracked_count: number;
   total_savings_potential: number;
 }
+
+export interface DashboardAlert {
+  id: string;
+  type: "target_reached" | "price_drop" | "near_target" | "scrape_issue";
+  level: "success" | "info" | "warning" | "error";
+  title: string;
+  message: string;
+  productId?: string;
+  productName?: string;
+  currentPrice?: number | null;
+  targetPrice?: number;
+  diffPct?: number | null;
+  store?: string | null;
+  url?: string | null;
+  createdAt: string;
+}

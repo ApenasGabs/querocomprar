@@ -1,26 +1,39 @@
-import express from "express";
-import type { Request, Response } from "express";
+import { Hono } from "hono";
 import crypto from "node:crypto";
 import { db } from "../db/database.ts";
 import { calculateProductMetrics, getSummaryMetrics } from "../services/analytics.ts";
+import { getDashboardAlerts } from "../services/alerts.ts";
 import { ScraperService } from "../services/scraper.ts";
 
-export const apiRouter = express.Router();
+export const apiRouter = new Hono();
 
 // GET /api/summary - Métricas consolidadas da dashboard
-apiRouter.get("/summary", (_req: Request, res: Response) => {
+apiRouter.get("/summary", (c) => {
   try {
     const summary = getSummaryMetrics();
-    res.json(summary);
+    return c.json(summary);
   } catch (err) {
-    res.status(500).json({ error: "Erro ao calcular métricas de resumo", details: String(err) });
+    return c.json({ error: "Erro ao calcular métricas de resumo", details: String(err) }, 500);
+  }
+});
+
+// GET /api/alerts - Alertas ativos exclusivos para a Dashboard
+apiRouter.get("/alerts", (c) => {
+  try {
+    const alerts = getDashboardAlerts();
+    return c.json({ alerts, total: alerts.length });
+  } catch (err) {
+    return c.json({ error: "Erro ao buscar alertas da dashboard", details: String(err) }, 500);
   }
 });
 
 // GET /api/products - Lista produtos com métricas e ordenação por prioridade
-apiRouter.get("/products", (req: Request, res: Response) => {
+apiRouter.get("/products", (c) => {
   try {
-    const { priority, status, category, search } = req.query;
+    const priority = c.req.query("priority");
+    const status = c.req.query("status");
+    const category = c.req.query("category");
+    const search = c.req.query("search");
 
     let query = `SELECT * FROM products WHERE is_active = 1`;
     const params: any[] = [];
@@ -58,21 +71,20 @@ apiRouter.get("/products", (req: Request, res: Response) => {
       enriched = enriched.filter((p) => p.metrics.status === status);
     }
 
-    res.json(enriched);
+    return c.json(enriched);
   } catch (err) {
-    res.status(500).json({ error: "Erro ao listar produtos", details: String(err) });
+    return c.json({ error: "Erro ao listar produtos", details: String(err) }, 500);
   }
 });
 
 // GET /api/products/:id - Detalhes completos do produto com histórico de preços
-apiRouter.get("/products/:id", (req: Request, res: Response) => {
+apiRouter.get("/products/:id", (c) => {
   try {
-    const id = req.params.id as string;
+    const id = c.req.param("id");
     const product = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id) as any;
 
     if (!product) {
-      res.status(404).json({ error: "Produto não encontrado" });
-      return;
+      return c.json({ error: "Produto não encontrado" }, 404);
     }
 
     const metrics = calculateProductMetrics(product.id, product.target_price);
@@ -85,25 +97,25 @@ apiRouter.get("/products/:id", (req: Request, res: Response) => {
       .prepare(`SELECT * FROM scrape_logs WHERE product_id = ? ORDER BY created_at DESC LIMIT 10`)
       .all(id);
 
-    res.json({
+    return c.json({
       ...product,
       metrics,
       price_history: priceHistory,
       logs,
     });
   } catch (err) {
-    res.status(500).json({ error: "Erro ao carregar detalhes do produto", details: String(err) });
+    return c.json({ error: "Erro ao carregar detalhes do produto", details: String(err) }, 500);
   }
 });
 
 // POST /api/products - Cadastra novo produto
-apiRouter.post("/products", async (req: Request, res: Response) => {
+apiRouter.post("/products", async (c) => {
   try {
-    const { name, target_price, priority, category, negative_keywords, reference_url, notes } = req.body;
+    const body = await c.req.json();
+    const { name, target_price, priority, category, negative_keywords, reference_url, notes } = body;
 
     if (!name || !target_price || Number(target_price) <= 0) {
-      res.status(400).json({ error: "Nome e preço alvo válido são obrigatórios" });
-      return;
+      return c.json({ error: "Nome e preço alvo válido são obrigatórios" }, 400);
     }
 
     const id = crypto.randomUUID();
@@ -133,22 +145,22 @@ apiRouter.post("/products", async (req: Request, res: Response) => {
     const created = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id) as any;
     const metrics = calculateProductMetrics(id, Number(target_price));
 
-    res.status(201).json({ ...created, metrics });
+    return c.json({ ...created, metrics }, 201);
   } catch (err) {
-    res.status(500).json({ error: "Erro ao cadastrar produto", details: String(err) });
+    return c.json({ error: "Erro ao cadastrar produto", details: String(err) }, 500);
   }
 });
 
 // PUT /api/products/:id - Atualiza produto
-apiRouter.put("/products/:id", (req: Request, res: Response) => {
+apiRouter.put("/products/:id", async (c) => {
   try {
-    const id = req.params.id as string;
-    const { name, target_price, priority, category, negative_keywords, reference_url, notes } = req.body;
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    const { name, target_price, priority, category, negative_keywords, reference_url, notes } = body;
 
-    const existing = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id);
+    const existing = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id) as any;
     if (!existing) {
-      res.status(404).json({ error: "Produto não encontrado" });
-      return;
+      return c.json({ error: "Produto não encontrado" }, 404);
     }
 
     const now = new Date().toISOString();
@@ -158,80 +170,79 @@ apiRouter.put("/products/:id", (req: Request, res: Response) => {
       SET name = ?, target_price = ?, priority = ?, category = ?, negative_keywords = ?, reference_url = ?, notes = ?, updated_at = ?
       WHERE id = ?
     `).run(
-      name,
-      Number(target_price),
-      Number(priority),
-      category,
-      negative_keywords,
-      reference_url,
-      notes,
+      name?.trim() || existing.name,
+      target_price !== undefined ? Number(target_price) : existing.target_price,
+      priority !== undefined ? Number(priority) : existing.priority,
+      category?.trim() || existing.category || "Geral",
+      negative_keywords !== undefined ? String(negative_keywords).trim() : (existing.negative_keywords || ""),
+      reference_url !== undefined ? String(reference_url).trim() : (existing.reference_url || ""),
+      notes !== undefined ? String(notes).trim() : (existing.notes || ""),
       now,
       id
     );
 
     const updated = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id) as any;
-    const metrics = calculateProductMetrics(id, Number(target_price));
+    const metrics = calculateProductMetrics(id, updated.target_price);
 
-    res.json({ ...updated, metrics });
+    return c.json({ ...updated, metrics });
   } catch (err) {
-    res.status(500).json({ error: "Erro ao atualizar produto", details: String(err) });
+    return c.json({ error: "Erro ao atualizar produto", details: String(err) }, 500);
   }
 });
 
 // DELETE /api/products/:id - Remove produto
-apiRouter.delete("/products/:id", (req: Request, res: Response) => {
+apiRouter.delete("/products/:id", (c) => {
   try {
-    const id = req.params.id as string;
+    const id = c.req.param("id");
     db.prepare(`DELETE FROM products WHERE id = ?`).run(id);
-    res.json({ success: true, message: "Produto removido com sucesso" });
+    return c.json({ success: true, message: "Produto removido com sucesso" });
   } catch (err) {
-    res.status(500).json({ error: "Erro ao remover produto", details: String(err) });
+    return c.json({ error: "Erro ao remover produto", details: String(err) }, 500);
   }
 });
 
 // POST /api/products/:id/scrape - Dispara checagem manual imediata de um produto
-apiRouter.post("/products/:id/scrape", async (req: Request, res: Response) => {
+apiRouter.post("/products/:id/scrape", async (c) => {
   try {
-    const id = req.params.id as string;
+    const id = c.req.param("id");
     const result = await ScraperService.scrapeProduct(id);
     const updated = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id) as any;
     const metrics = calculateProductMetrics(id, updated.target_price);
 
-    res.json({ ...result, product: { ...updated, metrics } });
+    return c.json({ ...result, product: { ...updated, metrics } });
   } catch (err) {
-    res.status(500).json({ error: "Erro ao executar checagem manual", details: String(err) });
+    return c.json({ error: "Erro ao executar checagem manual", details: String(err) }, 500);
   }
 });
 
 // POST /api/scrape/all - Dispara checagem em todos os produtos
-apiRouter.post("/scrape/all", async (_req: Request, res: Response) => {
+apiRouter.post("/scrape/all", async (c) => {
   try {
     const result = await ScraperService.scrapeAllActiveProducts();
-    res.json({ success: true, ...result });
+    return c.json({ success: true, ...result });
   } catch (err) {
-    res.status(500).json({ error: "Erro ao executar varredura global", details: String(err) });
+    return c.json({ error: "Erro ao executar varredura global", details: String(err) }, 500);
   }
 });
 
 // GET /api/logs - Retorna histórico recente de scraping
-apiRouter.get("/logs", (_req: Request, res: Response) => {
+apiRouter.get("/logs", (c) => {
   try {
     const logs = db
       .prepare(`SELECT * FROM scrape_logs ORDER BY created_at DESC LIMIT 30`)
       .all();
-    res.json(logs);
+    return c.json(logs);
   } catch (err) {
-    res.status(500).json({ error: "Erro ao buscar logs", details: String(err) });
+    return c.json({ error: "Erro ao buscar logs", details: String(err) }, 500);
   }
 });
 
 // POST /api/seed - Popula produtos de demonstração com histórico temporal para testes
-apiRouter.post("/seed", (_req: Request, res: Response) => {
+apiRouter.post("/seed", (c) => {
   try {
     const existing = db.prepare("SELECT count(*) as count FROM products").get() as { count: number };
     if (existing.count > 0) {
-      res.json({ message: "O banco já possui produtos cadastrados.", count: existing.count });
-      return;
+      return c.json({ message: "O banco já possui produtos cadastrados.", count: existing.count });
     }
 
     const sampleProducts = [
@@ -322,8 +333,8 @@ apiRouter.post("/seed", (_req: Request, res: Response) => {
       }
     }
 
-    res.json({ success: true, message: "Seed de demonstração inserido com sucesso!", count: sampleProducts.length });
+    return c.json({ success: true, message: "Seed de demonstração inserido com sucesso!", count: sampleProducts.length });
   } catch (err) {
-    res.status(500).json({ error: "Erro ao gerar seed", details: String(err) });
+    return c.json({ error: "Erro ao gerar seed", details: String(err) }, 500);
   }
 });
